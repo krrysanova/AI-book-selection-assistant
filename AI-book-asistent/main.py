@@ -3,16 +3,14 @@ import numpy as np
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
+from rapidfuzz import process
 
-# Clean dataset
+# Cleaning dataset
 df = pd.read_csv('dataset/books.csv', on_bad_lines='skip')
 df.dropna(inplace=True)
 df.drop_duplicates(inplace=True)
 df = df.drop('isbn13', axis=1)
 df = df.drop('language_code', axis=1)
-# Print dataset info
-print("Shape:", df.shape)
-print("\nFeatures:", df.columns)
 
 # Scaling numerical features (ensure only numerical columns are scaled)
 numerical_features = df[['num_pages', 'ratings_count', 'text_reviews_count']].select_dtypes(include=[np.number])
@@ -30,14 +28,12 @@ combined_features = np.hstack([scaled_numerical_features, author_vectors.toarray
 
 # Calculate cosine similarity
 cos_sim_matrix = cosine_similarity(combined_features)
-
-# Convert to DataFrame for easier viewing
 cos_sim_df = pd.DataFrame(cos_sim_matrix, index=df['title'], columns=df['title'])
 
 # Print the similarity matrix
-print(cos_sim_df)
+print(df.columns)
 
-def recommend_books(book_title, n_recommendations=2):
+def recommend_books(book_title, n_recommendations=10):
     if book_title == '' or book_title == ' ':
         return "The name of book cant be empty string."
     if book_title not in df['title'].values:
@@ -50,5 +46,15 @@ def recommend_books(book_title, n_recommendations=2):
     recommended_indices = [i[0] for i in sorted_scores[1:n_recommendations+1]]
     return df.iloc[recommended_indices]['title'].tolist()
 
-recommendations = recommend_books('Poor People')
+def find_closest_book(input):
+    book_titles = df['title'].to_list()
+    closest_matches = process.extract(input, book_titles, limit= 10)
+    # print(closest_matches)
+    sorted_matches = sorted(closest_matches, key=lambda x: x[1], reverse=True)
+    # print(sorted_matches)
+    return sorted_matches[0][0]
+
+input = "Notes from a Small Island"
+recommendations = recommend_books(find_closest_book(input), 10)
+print("Your book:", find_closest_book(input))
 print("Recommended books:", recommendations)    
